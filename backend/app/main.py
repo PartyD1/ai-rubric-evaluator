@@ -1,8 +1,11 @@
 """FastAPI app with all route definitions."""
 
+import json
 import logging
 import os
 import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +19,34 @@ from .services import grading_service, pdf_service, rubric_service
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AI Rubric Evaluator")
+
+def _seed_rubrics() -> None:
+    """Seed rubrics from JSON files if the rubrics table is empty."""
+    db = SessionLocal()
+    try:
+        if rubric_service.list_events(db):
+            return
+        rubrics_dir = Path(__file__).resolve().parent.parent / "rubrics"
+        if not rubrics_dir.exists():
+            return
+        for json_file in rubrics_dir.glob("*.json"):
+            with open(json_file) as f:
+                data = json.load(f)
+            event_name = data.get("event")
+            if event_name:
+                rubric_service.create_rubric(db, event_name, data)
+                logger.info("Auto-seeded rubric: %s", event_name)
+    finally:
+        db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _seed_rubrics()
+    yield
+
+
+app = FastAPI(title="AI Rubric Evaluator", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

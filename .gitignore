@@ -29,9 +29,6 @@ build/
 # Alembic
 alembic/versions/__pycache__/
 
-# Claude
-CLAUDE.md
-
 # Misc
 *.log
 *.pid

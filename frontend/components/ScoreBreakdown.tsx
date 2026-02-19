@@ -81,8 +81,20 @@ export default function ScoreBreakdown({ result }: { result: GradingResult }) {
     ? (result.total_awarded / result.total_possible) * 100
     : 0;
 
+  const hasFlaggedPenalties = result.penalties?.some((p) => p.status === "flagged");
+
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
+      {/* Penalty warning banner */}
+      {hasFlaggedPenalties && (
+        <div className="flex items-center gap-3 bg-red-500/10 border border-red-500/40 rounded-xl px-5 py-4">
+          <span className="text-red-400 text-lg">⚠</span>
+          <p className="text-red-400 text-sm font-medium">
+            Your report will likely receive penalty points. Review the checklist below before submitting.
+          </p>
+        </div>
+      )}
+
       {/* Overall score card */}
       <div className="bg-[#1a0030] border border-purple-500/30 rounded-2xl p-8 text-center shadow-lg shadow-purple-600/10">
         <p className="text-purple-300/60 text-sm uppercase tracking-widest mb-2">

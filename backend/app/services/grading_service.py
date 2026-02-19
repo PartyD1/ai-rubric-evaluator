@@ -12,7 +12,7 @@ from ..models import Job
 from ..schemas import GradingResult
 from ..utils.file_cleanup import delete_file
 from ..utils.token_counter import truncate_text
-from .pdf_service import extract_text, get_page_count
+from .pdf_service import extract_text, get_page_count, detect_document_structure
 from ..events_data import get_cluster_for_code, get_event_by_code
 from .rubric_service import get_rubric_by_event, get_rubric_by_event_code
 
@@ -53,15 +53,7 @@ Penalty checks to evaluate:
    Check if the document text includes a Statement of Assurances or Academic Integrity page.
    Always include a note that the physical/digital signature must be manually verified regardless of status.
 
-2. Page count within 20 pages (5-point penalty per extra page)
-   The uploaded PDF has {page_count} total pages.
-   Follow these steps exactly:
-   Step 1 — Count excluded pages: title page = 1, table of contents = 1, Statement of Assurances = 1 if present (per check #1 above), else 0.
-   Step 2 — Compute: content_pages = {page_count} - excluded_pages.
-   Step 3 — If content_pages > 20: status = "flagged", note the arithmetic and how many pages over.
-             If content_pages <= 20: status = "clear", note the arithmetic confirming it is within the limit.
-
-3. Written entry follows the required outline (5-point penalty)
+2. Written entry follows the required outline (5-point penalty)
    Based on your evaluation above using the required outline, does the document follow the prescribed structure?
 
 REPORT TEXT:
@@ -122,6 +114,58 @@ GRADING_SCHEMA = {
 }
 
 
+def _compute_page_count_penalty(page_count: int, structure: dict) -> dict:
+    """Compute page count penalty in Python — not delegated to the LLM."""
+    # Hard cap: 24+ pages always flagged, no exclusions apply
+    if page_count >= 24:
+        return {
+            "description": "Page count within 20 pages (5-pt penalty per extra page)",
+            "penalty_points": 5 * (page_count - 23),
+            "status": "flagged",
+            "note": (
+                f"Document has {page_count} pages, which exceeds the absolute maximum of 23 "
+                f"(20 content + title page + table of contents + statement of assurances). "
+                f"Penalty applies regardless of which excluded pages are present."
+            ),
+        }
+
+    excluded = []
+    if structure["has_title_page"]:
+        excluded.append("title page")
+    if structure["has_toc"]:
+        excluded.append("table of contents")
+    if structure["has_soa"]:
+        excluded.append("statement of assurances")
+
+    excluded_count = len(excluded)
+    content_pages = page_count - excluded_count
+
+    if content_pages > 20:
+        over = content_pages - 20
+        excluded_str = ", ".join(excluded) if excluded else "none detected"
+        return {
+            "description": "Page count within 20 pages (5-pt penalty per extra page)",
+            "penalty_points": 5 * over,
+            "status": "flagged",
+            "note": (
+                f"Total pages: {page_count}. Excluded: {excluded_str} ({excluded_count} page(s)). "
+                f"Content pages: {page_count} − {excluded_count} = {content_pages}, "
+                f"which is {over} page(s) over the 20-page limit."
+            ),
+        }
+
+    excluded_str = ", ".join(excluded) if excluded else "none detected"
+    return {
+        "description": "Page count within 20 pages (5-pt penalty per extra page)",
+        "penalty_points": 5,
+        "status": "clear",
+        "note": (
+            f"Total pages: {page_count}. Excluded: {excluded_str} ({excluded_count} page(s)). "
+            f"Content pages: {page_count} − {excluded_count} = {content_pages}, within the 20-page limit."
+        ),
+    }
+
+
 def grade_report(db: Session, job_id: str) -> None:
     """Run the full grading pipeline for a job."""
     job = db.query(Job).filter(Job.id == job_id).first()
@@ -133,8 +177,9 @@ def grade_report(db: Session, job_id: str) -> None:
         job.status = "processing"
         db.commit()
 
-        # Get page count before extraction (file is deleted in finally)
+        # Get page count and document structure before extraction (file deleted in finally)
         page_count = get_page_count(job.file_path)
+        doc_structure = detect_document_structure(job.file_path)
 
         # Extract text
         text = extract_text(job.file_path)
@@ -170,11 +215,17 @@ def grade_report(db: Session, job_id: str) -> None:
         if not required_outline:
             required_outline = rubric.rubric_data.get("required_outline")
 
-        # Call LLM
-        result = call_llm(cluster_name, specific_name, event_code, event_description, rubric.rubric_data, text, required_outline, page_count)
+        # Call LLM (page count penalty is computed in Python, not by the LLM)
+        result = call_llm(cluster_name, specific_name, event_code, event_description, rubric.rubric_data, text, required_outline)
 
         # Override event_name in LLM output with the specific event display string
         result["event_name"] = f"{specific_name} ({event_code})" if job.event_code else specific_name
+
+        # Inject Python-computed page count penalty at index 1 (after SOA check)
+        page_penalty = _compute_page_count_penalty(page_count, doc_structure)
+        penalties = result.get("penalties", [])
+        penalties.insert(1, page_penalty)
+        result["penalties"] = penalties
 
         # Validate with Pydantic
         grading_result = GradingResult(**result)
@@ -203,7 +254,6 @@ def call_llm(
     rubric_data: dict,
     extracted_text: str,
     required_outline: dict | None = None,
-    page_count: int = 0,
 ) -> dict:
     """Call OpenAI API with structured output."""
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -227,7 +277,6 @@ def call_llm(
         event_description=event_description,
         required_outline_section=required_outline_section,
         rubric_json=json.dumps(rubric_data, indent=2),
-        page_count=page_count,
         extracted_text=extracted_text,
     )
 

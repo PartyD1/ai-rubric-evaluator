@@ -59,6 +59,35 @@ def validate_page_count(file_path: str) -> Optional[str]:
         return "Unable to extract text from PDF. Ensure it's a typed document."
 
 
+def detect_document_structure(file_path: str) -> dict:
+    """Detect presence of title page, TOC, and Statement of Assurances from page text."""
+    doc = fitz.open(file_path)
+    has_title_page = False
+    has_toc = False
+    has_soa = False
+
+    for i, page in enumerate(doc):
+        text = page.get_text().strip()
+        text_lower = text.lower()
+
+        # Title page: first page with sparse text (cover/title pages are brief)
+        if i == 0 and len(text.split()) < 80:
+            has_title_page = True
+
+        # TOC: any page containing "table of contents" or starting with "contents"
+        if "table of contents" in text_lower:
+            has_toc = True
+        elif text_lower.startswith("contents"):
+            has_toc = True
+
+        # SOA: any page with statement of assurances keywords
+        if "statement of assurances" in text_lower or "academic integrity" in text_lower:
+            has_soa = True
+
+    doc.close()
+    return {"has_title_page": has_title_page, "has_toc": has_toc, "has_soa": has_soa}
+
+
 def extract_text(file_path: str) -> str:
     """Extract text from all pages of a PDF."""
     try:

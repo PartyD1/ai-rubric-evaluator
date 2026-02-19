@@ -8,10 +8,16 @@ code and description that defines the prompt students must address.
 from typing import Optional, TypedDict
 
 
-class EventInfo(TypedDict):
+class _EventInfoRequired(TypedDict):
     code: str
     name: str
     description: str
+
+
+class EventInfo(_EventInfoRequired, total=False):
+    """Event entry. `required_outline` is optional; if absent, falls back to the
+    cluster-level outline stored in the rubric JSON."""
+    required_outline: Optional[dict]
 
 
 class ClusterInfo(TypedDict):
@@ -27,7 +33,7 @@ CLUSTERS: list[ClusterInfo] = [
         "events": [
             {
                 "code": "BOR",
-                "name": "Business Services",
+                "name": "Business Services Operations Research",
                 "description": (
                     "Providing services to businesses on a fee or contract basis or providing "
                     "services to consumers. Examples may include: human resources companies, "
@@ -40,7 +46,7 @@ CLUSTERS: list[ClusterInfo] = [
             },
             {
                 "code": "FOR",
-                "name": "Finance",
+                "name": "Finance Operations Research",
                 "description": (
                     "Providing financial services to commercial and retail customers. Examples "
                     "may include: banks, credit unions, accounting firms, investment companies "
@@ -49,7 +55,7 @@ CLUSTERS: list[ClusterInfo] = [
             },
             {
                 "code": "HTOR",
-                "name": "Hospitality and Tourism",
+                "name": "Hospitality and Tourism Operations Research",
                 "description": (
                     "Providing products and services related to event management, lodging, "
                     "restaurant management and travel and tourism industries. Examples may "
@@ -60,7 +66,7 @@ CLUSTERS: list[ClusterInfo] = [
             },
             {
                 "code": "BMOR",
-                "name": "Buying and Merchandising",
+                "name": "Buying and Merchandising Operations Research",
                 "description": (
                     "Getting the product into the hands of the customer through forecasting, "
                     "planning, buying, displaying, selling and providing customer service. "
@@ -72,7 +78,7 @@ CLUSTERS: list[ClusterInfo] = [
             },
             {
                 "code": "SEOR",
-                "name": "Sports and Entertainment Marketing",
+                "name": "Sports and Entertainment Marketing Operations Research",
                 "description": (
                     "Providing products, services or experiences relating to amateur or "
                     "professional sports or sporting events, entertainment or entertainment "

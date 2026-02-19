@@ -69,6 +69,22 @@ def interactive_mode() -> None:
         "sections": sections,
     }
 
+    # Optional required_outline
+    add_outline = input("\nAdd a required_outline (official document structure)? [y/n]: ").strip().lower()
+    if add_outline == "y":
+        print("Paste the required_outline as JSON (end with a blank line on its own):")
+        lines = []
+        while True:
+            line = input()
+            if line == "":
+                break
+            lines.append(line)
+        try:
+            rubric_data["required_outline"] = json.loads("\n".join(lines))
+            print("required_outline parsed successfully.")
+        except json.JSONDecodeError as e:
+            print(f"Invalid JSON — skipping required_outline: {e}")
+
     # Validate points sum
     section_sum = sum(s["max_points"] for s in sections)
     if section_sum != total_points:

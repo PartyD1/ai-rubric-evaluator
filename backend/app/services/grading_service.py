@@ -12,7 +12,7 @@ from ..models import Job
 from ..schemas import GradingResult
 from ..utils.file_cleanup import delete_file
 from ..utils.token_counter import truncate_text
-from .pdf_service import extract_text
+from .pdf_service import extract_text, get_page_count
 from ..events_data import get_cluster_for_code, get_event_by_code
 from .rubric_service import get_rubric_by_event, get_rubric_by_event_code
 
@@ -27,19 +27,42 @@ EVENT DESCRIPTION — what this project must address:
 
 A critical part of your evaluation is assessing how clearly and completely the report addresses the specific requirements of this event. Students must demonstrate that their project directly fulfills the event description above, not just a generic project management plan.
 {required_outline_section}
-You must also grade this report using the official rubric provided below. Be strict but fair. Students should earn points through demonstrated competence, not through participation.
+You are evaluating competitive high school DECA entries — compare this report against the standard of a strong, competitive high school submission, not a professional business document. Students who demonstrate clear understanding and competent execution of the required elements should earn scores in the upper tiers. Reserve lower tiers for reports with genuine gaps or missing elements.
 
 RUBRIC:
 {rubric_json}
+
+SCORING CALIBRATION:
+Use these benchmarks to anchor your scores:
+- 90–100%: Exceptional entry. All elements present, clearly executed, and well above peer level.
+- 80–89%: Strong competitive entry. All major elements present with minor gaps. Typical of a state/international qualifier.
+- 70–79%: Solid entry with noticeable gaps in one or two areas.
+- Below 70%: Significant missing elements or weak execution across multiple sections.
+
+Give credit generously for elements that are present and functional, even if not perfectly articulated.
+
+PENALTY CHECKLIST:
+After grading all rubric sections, evaluate each official DECA written entry requirement below.
+For each penalty check, set status to:
+- "flagged"       if you can detect the issue from the extracted text
+- "clear"         if the text confirms the requirement is met
+- "manual_check"  if it cannot be determined from extracted text alone
+
+Penalty checks to evaluate:
+1. Statement of Assurances and Academic Integrity (15-point penalty if missing)
+   Check if the document text includes a Statement of Assurances or Academic Integrity page.
+   Always include a note that the physical/digital signature must be manually verified regardless of status.
+
+2. Written entry follows the required outline (5-point penalty)
+   Based on your evaluation above using the required outline, does the document follow the prescribed structure?
 
 REPORT TEXT:
 {extracted_text}
 
 Grade each section independently. For each section:
-1. Identify what the report does well
-2. Identify what's missing or weak, especially relative to the event description above
-3. Assign a score based on the scoring guide
-4. Provide specific, actionable feedback
+1. Identify what the report accomplishes well and give full credit for it
+2. Assign a score based on the scoring guide — when evidence is present, score toward the upper end of the matching tier
+3. Note specific areas for improvement as actionable feedback (not as reasons to dock points retroactively)
 
 Return ONLY valid JSON matching the required schema. Do not add commentary outside the JSON structure."""
 
@@ -64,6 +87,20 @@ GRADING_SCHEMA = {
             },
         },
         "overall_feedback": {"type": "string"},
+        "penalties": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "penalty_points": {"type": "integer"},
+                    "status": {"type": "string", "enum": ["flagged", "clear", "manual_check"]},
+                    "note": {"type": "string"},
+                },
+                "required": ["description", "penalty_points", "status", "note"],
+                "additionalProperties": False,
+            },
+        },
     },
     "required": [
         "event_name",
@@ -71,9 +108,47 @@ GRADING_SCHEMA = {
         "total_awarded",
         "sections",
         "overall_feedback",
+        "penalties",
     ],
     "additionalProperties": False,
 }
+
+
+def _compute_page_count_penalty(page_count: int) -> dict:
+    """Compute page count penalty in Python — not delegated to the LLM.
+
+    DECA always excludes 3 pages from the count:
+      title page + table of contents + statement of assurances = 3
+    Max allowed total: 23 pages (20 content + 3 excluded).
+    24+ pages are always flagged.
+    """
+    excluded_count = 3  # title page, TOC, statement of assurances
+    content_pages = page_count - excluded_count
+
+    if content_pages > 20:
+        over = content_pages - 20
+        return {
+            "description": "Page count within 20 pages (5-pt penalty per extra page)",
+            "penalty_points": 5 * over,
+            "status": "flagged",
+            "note": (
+                f"Total pages: {page_count}. Excluded: title page, table of contents, "
+                f"statement of assurances (3 pages). "
+                f"Content pages: {page_count} − 3 = {content_pages}, "
+                f"which is {over} page(s) over the 20-page limit."
+            ),
+        }
+
+    return {
+        "description": "Page count within 20 pages (5-pt penalty per extra page)",
+        "penalty_points": 5,
+        "status": "clear",
+        "note": (
+            f"Total pages: {page_count}. Excluded: title page, table of contents, "
+            f"statement of assurances (3 pages). "
+            f"Content pages: {page_count} − 3 = {content_pages}, within the 20-page limit."
+        ),
+    }
 
 
 def grade_report(db: Session, job_id: str) -> None:
@@ -86,6 +161,9 @@ def grade_report(db: Session, job_id: str) -> None:
     try:
         job.status = "processing"
         db.commit()
+
+        # Get page count before extraction (file deleted in finally)
+        page_count = get_page_count(job.file_path)
 
         # Extract text
         text = extract_text(job.file_path)
@@ -121,11 +199,17 @@ def grade_report(db: Session, job_id: str) -> None:
         if not required_outline:
             required_outline = rubric.rubric_data.get("required_outline")
 
-        # Call LLM
+        # Call LLM (page count penalty is computed in Python, not by the LLM)
         result = call_llm(cluster_name, specific_name, event_code, event_description, rubric.rubric_data, text, required_outline)
 
         # Override event_name in LLM output with the specific event display string
         result["event_name"] = f"{specific_name} ({event_code})" if job.event_code else specific_name
+
+        # Inject Python-computed page count penalty at index 1 (after SOA check)
+        page_penalty = _compute_page_count_penalty(page_count)
+        penalties = result.get("penalties", [])
+        penalties.insert(1, page_penalty)
+        result["penalties"] = penalties
 
         # Validate with Pydantic
         grading_result = GradingResult(**result)
@@ -182,7 +266,7 @@ def call_llm(
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        temperature=0.2,
+        temperature=0.3,
         messages=[{"role": "user", "content": prompt}],
         response_format={
             "type": "json_schema",

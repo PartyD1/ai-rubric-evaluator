@@ -112,8 +112,7 @@ cd frontend
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-If port 3000 is in use, Next.js automatically uses 3001 — both ports are CORS-whitelisted.
+Open [http://localhost:3001](http://localhost:3001) in your browser.
 
 ---
 
@@ -181,8 +180,8 @@ Caused by `openai==1.51.0` with `httpx>=0.28`. Fix:
 pip install "openai>=1.57.0"
 ```
 
-**Port 3000 already in use**
-Next.js will automatically fall back to port 3001. Both `localhost:3000` and `localhost:3001` are CORS-whitelisted in the backend.
+**Port 3001 already in use**
+Change the port by editing the `dev` script in `frontend/package.json` and updating `backend/app/main.py` CORS origins to match.
 
 **Lock file / stale build error**
 ```

@@ -1,6 +1,30 @@
 {
   "event": "Business Operations Research",
   "total_points": 60,
+  "required_outline": {
+    "I. Executive Summary": "One- to three-page description of the project",
+    "II. Introduction": {
+      "A. Description of the business or organization": "Description of the business or organization",
+      "B. Description of the target market": "Demographics and psychographics of the target market",
+      "C. Overview of current business strategy": "Overview of the business or organization's current business strategy relating to corporate social responsibility initiatives"
+    },
+    "III. Research Methods Used in the Study": {
+      "A. Description and rationale of research methodologies": "Description and rationale of research methodologies selected to conduct the research study",
+      "B. Process used to conduct the selected research methods": "Process used to conduct the selected research methods"
+    },
+    "IV. Findings and Conclusions of the Study": {
+      "A. Findings of the research study": "Findings of the research study",
+      "B. Conclusions based on the findings": "Conclusions based on the findings"
+    },
+    "V. Proposed Strategic Plan": {
+      "A. Objectives and rationale of the proposed strategic plan": "Objectives and rationale of the proposed strategic plan",
+      "B. Proposed activities and timelines": "Proposed activities and timelines",
+      "C. Proposed metrics or key performance indicators": "Proposed metrics or key performance indicators to measure plan effectiveness"
+    },
+    "VI. Proposed Budget": "Costs associated with proposed strategies",
+    "VII. Bibliography": "A bibliography is required. Include a list of the sources of information used in the written document.",
+    "VIII. Appendix": "An appendix is optional. If additional material is appended, all pages must be numbered. Include exhibits appropriate to the written entry but not important enough to include in the body (e.g. sample questionnaires, letters, background data, minutes of meetings)."
+  },
   "sections": [
     {
       "name": "Executive Summary",

@@ -1,6 +1,36 @@
 {
   "event": "Project Management",
   "total_points": 60,
+  "required_outline": {
+    "I. Executive Summary": "One- to three-page description of the project",
+    "II. Initiating": {
+      "A. Statement of the problem": "Clear description of the problem being addressed",
+      "B. Project scope": "Brief description of the project (purpose, rationale and expected benefits)"
+    },
+    "III. Planning and Organizing": {
+      "A. Project goals": "The goals of the project",
+      "B. Human resource management plan": "Team member roles, skills and strengths and responsibilities",
+      "C. Schedule": {
+        "i. Milestone": "Describe the 2-4 major milestones (activities) needed to accomplish",
+        "ii. Timeline": "Timeline to reach each milestone"
+      },
+      "D. Quality management plan": "Key metrics",
+      "E. Risk management plan": "Potential issues, potential impact of the issue and response strategy",
+      "F. Proposed project budget": "Include both monetary and in-kind donations when applicable"
+    },
+    "IV. Execution": "Description and documentation of the project plan implementation",
+    "V. Monitoring and Controlling": {
+      "A. Monitoring": "Describe how you monitored your schedule, budget and project quality",
+      "B. Controlling": "List issues encountered and how you dealt with them"
+    },
+    "VI. Closing the Project": {
+      "A. Evaluation of key metrics": "Evaluation of key metrics",
+      "B. Lessons learned": "Describe what worked well and what didn't work well for each of the project management processes: initiating, planning and organizing, execution, monitoring and controlling",
+      "C. Recommendations for future projects": "Recommendations for future projects"
+    },
+    "VII. Bibliography": "A bibliography is required. Include a list of the sources of information used in the written document.",
+    "VIII. Appendix": "An appendix is optional. If additional material is appended, all pages must be numbered. Include exhibits appropriate to the written entry but not important enough to include in the body (e.g. sample questionnaires, letters, background data, minutes of meetings)."
+  },
   "sections": [
     {
       "name": "Executive Summary",

@@ -26,7 +26,7 @@ EVENT DESCRIPTION — what this project must address:
 {event_description}
 
 A critical part of your evaluation is assessing how clearly and completely the report addresses the specific requirements of this event. Students must demonstrate that their project directly fulfills the event description above, not just a generic project management plan.
-
+{required_outline_section}
 You must also grade this report using the official rubric provided below. Be strict but fair. Students should earn points through demonstrated competence, not through participation.
 
 RUBRIC:
@@ -109,12 +109,20 @@ def grade_report(db: Session, job_id: str) -> None:
             specific_name = job.event_name
             event_code = job.event_name
             event_description = ""
+            event_info = None
 
         if not rubric:
             raise ValueError(f"No rubric found for event: {job.event_code or job.event_name}")
 
+        # Resolve required outline: event-level first, then cluster/rubric level
+        required_outline = None
+        if event_info:
+            required_outline = event_info.get("required_outline")
+        if not required_outline:
+            required_outline = rubric.rubric_data.get("required_outline")
+
         # Call LLM
-        result = call_llm(cluster_name, specific_name, event_code, event_description, rubric.rubric_data, text)
+        result = call_llm(cluster_name, specific_name, event_code, event_description, rubric.rubric_data, text, required_outline)
 
         # Override event_name in LLM output with the specific event display string
         result["event_name"] = f"{specific_name} ({event_code})" if job.event_code else specific_name
@@ -145,15 +153,29 @@ def call_llm(
     event_description: str,
     rubric_data: dict,
     extracted_text: str,
+    required_outline: dict | None = None,
 ) -> dict:
     """Call OpenAI API with structured output."""
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+    if required_outline:
+        required_outline_section = (
+            "\nREQUIRED REPORT OUTLINE:\n"
+            "Students must follow this official DECA written report structure. "
+            "Check whether each required element is present when grading the corresponding rubric section. "
+            "Penalize missing or incomplete required elements appropriately.\n\n"
+            + json.dumps(required_outline, indent=2)
+            + "\n"
+        )
+    else:
+        required_outline_section = ""
 
     prompt = SYSTEM_PROMPT_TEMPLATE.format(
         cluster_name=cluster_name,
         specific_event_name=specific_event_name,
         event_code=event_code,
         event_description=event_description,
+        required_outline_section=required_outline_section,
         rubric_json=json.dumps(rubric_data, indent=2),
         extracted_text=extracted_text,
     )

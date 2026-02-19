@@ -44,19 +44,16 @@ Penalty checks to evaluate:
    Check if the document text includes a Statement of Assurances or Academic Integrity page.
    Always include a note that the physical/digital signature must be manually verified regardless of status.
 
-2. Page count within 20 pages (5-point penalty per extra page, not counting title page and table of contents)
-   The uploaded PDF has {page_count} total pages. Assuming 1 title page and 1 table of contents page,
-   the graded body is approximately {page_count} - 2 pages. If over 20, flag it and note how many pages over.
+2. Page count within 20 pages (5-point penalty per extra page)
+   The uploaded PDF has {page_count} total pages. The title page, table of contents, and Statement of
+   Assurances (if present) do not count toward the 20-page limit.
+   - If the Statement of Assurances is present: up to 23 total pages are allowed (20 content + title + TOC + statement).
+     If {page_count} > 23, flag it and note how many pages over the limit.
+   - If the Statement of Assurances is missing: up to 22 total pages are allowed (20 content + title + TOC).
+     If {page_count} > 22, flag it and note how many pages over the limit.
 
-3. All pages numbered sequentially (5-point penalty)
-   Based on the text content and structure, does the document appear to follow consistent sequential page numbering
-   from the executive summary through to the end of the appendix?
-
-4. Written entry follows the required outline (5-point penalty)
+3. Written entry follows the required outline (5-point penalty)
    Based on your evaluation above using the required outline, does the document follow the prescribed structure?
-
-5. Typed on 8\u00bd x 11 inch pages with no handwritten content (5-point penalty)
-   Cannot be verified from extracted text. Always set status = "manual_check".
 
 REPORT TEXT:
 {extracted_text}

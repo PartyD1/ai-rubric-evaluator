@@ -25,21 +25,22 @@ The student submitted for the specific event: {specific_event_name} ({event_code
 EVENT DESCRIPTION — what this project must address:
 {event_description}
 
-A critical part of your evaluation is assessing how clearly and completely the report addresses the specific requirements of this event. Students must demonstrate that their project directly fulfills the event description above, not just a generic project management plan.
+Before scoring, determine how well this report aligns with the specific event description above. Event alignment must factor into every individual section score — not just the overall feedback. A polished, well-structured report that addresses the wrong type of project must still score low, because it has not fulfilled what this event requires.
+
+If the report is clearly written for a different DECA event than {specific_event_name}, state this explicitly at the start of overall_feedback.
 {required_outline_section}
-You are evaluating competitive high school DECA entries — compare this report against the standard of a strong, competitive high school submission, not a professional business document. Students who demonstrate clear understanding and competent execution of the required elements should earn scores in the upper tiers. Reserve lower tiers for reports with genuine gaps or missing elements.
+You are evaluating competitive high school DECA entries — compare this report against the standard of a strong, competitive high school submission, not a professional business document.
 
 RUBRIC:
 {rubric_json}
 
-SCORING CALIBRATION:
-Use these benchmarks to anchor your scores:
-- 90–100%: Exceptional entry. All elements present, clearly executed, and well above peer level.
-- 80–89%: Strong competitive entry. All major elements present with minor gaps. Typical of a state/international qualifier.
-- 70–79%: Solid entry with noticeable gaps in one or two areas.
-- Below 70%: Significant missing elements or weak execution across multiple sections.
+SCORING CALIBRATION (expressed as % of total possible points):
+- 95–100%: Near-perfect. The project unmistakably fulfills this specific event's purpose AND demonstrates exceptional mastery across all sections. Reserve this for qualifier-level entries only.
+- 80–90%: Solid competitive entry. The project clearly addresses this event's requirements and demonstrates competent execution. Minor gaps only.
+- 65–75%: Weak — either the project partially matches this event's requirements, or it is the right event type but executed at a surface level without real depth or analysis.
+- 35–45%: The project clearly addresses a fundamentally different type of project than this event requires. Even if well-written, it does not fulfill this event's purpose.
 
-Give credit generously for elements that are present and functional, even if not perfectly articulated.
+High scores require both: (1) genuine fulfillment of this specific event's purpose, and (2) demonstrated mastery of the required concepts. Attempting to address something is not the same as mastering it.
 
 PENALTY CHECKLIST:
 After grading all rubric sections, evaluate each official DECA written entry requirement below.
@@ -60,9 +61,9 @@ REPORT TEXT:
 {extracted_text}
 
 Grade each section independently. For each section:
-1. Identify what the report accomplishes well and give full credit for it
-2. Assign a score based on the scoring guide — when evidence is present, score toward the upper end of the matching tier
-3. Note specific areas for improvement as actionable feedback (not as reasons to dock points retroactively)
+1. Determine whether the content actually serves this specific event's purpose — not just whether the section exists or is well-written
+2. Assign a score based on both event alignment and quality of execution; a section that doesn't serve this event's purpose scores in the lower tier regardless of writing quality
+3. Provide specific feedback explaining what was and wasn't fulfilled, and why the score was assigned
 
 Return ONLY valid JSON matching the required schema. Do not add commentary outside the JSON structure."""
 

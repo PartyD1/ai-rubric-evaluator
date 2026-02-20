@@ -212,6 +212,19 @@ def grade_report(db: Session, job_id: str) -> None:
         penalties.insert(1, page_penalty)
         result["penalties"] = penalties
 
+        # Clamp each section so awarded_points never exceeds max_points
+        for section in result.get("sections", []):
+            if section["awarded_points"] > section["max_points"]:
+                logger.warning(
+                    "Job %s: section '%s' awarded %d > max %d — clamping",
+                    job_id,
+                    section["name"],
+                    section["awarded_points"],
+                    section["max_points"],
+                )
+                section["awarded_points"] = section["max_points"]
+        result["total_awarded"] = sum(s["awarded_points"] for s in result.get("sections", []))
+
         # Validate with Pydantic
         grading_result = GradingResult(**result)
 

@@ -42,7 +42,14 @@ CLUSTERS: list[ClusterInfo] = [
                     "firms, training and development organizations, health care service providers, "
                     "libraries, construction companies, real estate firms, landscaping companies, "
                     "beauty salons, car washes, automotive repair companies, interior decorating "
-                    "firms, child care services, photography studios, and tutoring services."
+                    "firms, child care services, photography studios, and tutoring services.\n\n"
+                    "2025-2026 MANDATORY TOPIC: The report MUST be centered on collaborating with "
+                    "that specific company to seek and incorporate customer feedback into the "
+                    "company's corporate social responsibility (CSR) initiatives and overall business "
+                    "strategies. Using the research findings, the report must develop a CSR strategy "
+                    "to achieve internal and/or external results. A report that does not substantively "
+                    "address CSR — regardless of writing quality or structure — cannot score well. "
+                    "CSR alignment is the primary filter for this event."
                 ),
             },
             {
@@ -53,7 +60,14 @@ CLUSTERS: list[ClusterInfo] = [
                     "commercial or retail customers. The report must analyze the operations of that "
                     "specific company — not the finance industry in general. Eligible companies "
                     "include: banks, credit unions, accounting firms, investment companies, and "
-                    "insurance companies."
+                    "insurance companies.\n\n"
+                    "2025-2026 MANDATORY TOPIC: The report MUST be centered on collaborating with "
+                    "that specific company to seek and incorporate customer feedback into the "
+                    "company's corporate social responsibility (CSR) initiatives and overall business "
+                    "strategies. Using the research findings, the report must develop a CSR strategy "
+                    "to achieve internal and/or external results. A report that does not substantively "
+                    "address CSR — regardless of writing quality or structure — cannot score well. "
+                    "CSR alignment is the primary filter for this event."
                 ),
             },
             {
@@ -65,7 +79,14 @@ CLUSTERS: list[ClusterInfo] = [
                     "report must analyze the operations of that specific company — not the "
                     "hospitality or tourism industry in general. Eligible companies include: hotels, "
                     "lodging services, convention centers, food and beverage providers, restaurants, "
-                    "museums, amusement parks, zoos, and other tourism-related businesses."
+                    "museums, amusement parks, zoos, and other tourism-related businesses.\n\n"
+                    "2025-2026 MANDATORY TOPIC: The report MUST be centered on collaborating with "
+                    "that specific company to seek and incorporate customer feedback into the "
+                    "company's corporate social responsibility (CSR) initiatives and overall business "
+                    "strategies. Using the research findings, the report must develop a CSR strategy "
+                    "to achieve internal and/or external results. A report that does not substantively "
+                    "address CSR — regardless of writing quality or structure — cannot score well. "
+                    "CSR alignment is the primary filter for this event."
                 ),
             },
             {
@@ -77,7 +98,14 @@ CLUSTERS: list[ClusterInfo] = [
                     "The report must analyze the operations of that specific company — not the retail "
                     "or wholesale industry in general. Eligible companies include: specialty stores, "
                     "department stores, shopping malls, grocery stores, convenience stores, "
-                    "pharmacies, discount stores, farmers markets, and car dealerships."
+                    "pharmacies, discount stores, farmers markets, and car dealerships.\n\n"
+                    "2025-2026 MANDATORY TOPIC: The report MUST be centered on collaborating with "
+                    "that specific company to seek and incorporate customer feedback into the "
+                    "company's corporate social responsibility (CSR) initiatives and overall business "
+                    "strategies. Using the research findings, the report must develop a CSR strategy "
+                    "to achieve internal and/or external results. A report that does not substantively "
+                    "address CSR — regardless of writing quality or structure — cannot score well. "
+                    "CSR alignment is the primary filter for this event."
                 ),
             },
             {
@@ -91,7 +119,14 @@ CLUSTERS: list[ClusterInfo] = [
                     "in general. Eligible companies include: sports teams, movie theaters, "
                     "waterparks, music venues, concert promoters, festivals, amateur practice "
                     "facilities, tournament organizers, summer camps, outdoor adventure companies, "
-                    "and craft or music class providers."
+                    "and craft or music class providers.\n\n"
+                    "2025-2026 MANDATORY TOPIC: The report MUST be centered on collaborating with "
+                    "that specific company to seek and incorporate customer feedback into the "
+                    "company's corporate social responsibility (CSR) initiatives and overall business "
+                    "strategies. Using the research findings, the report must develop a CSR strategy "
+                    "to achieve internal and/or external results. A report that does not substantively "
+                    "address CSR — regardless of writing quality or structure — cannot score well. "
+                    "CSR alignment is the primary filter for this event."
                 ),
             },
         ],

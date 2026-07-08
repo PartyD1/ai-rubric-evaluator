@@ -42,6 +42,7 @@ class GradingResult(BaseModel):
     was_truncated: bool = False
     truncated_at_tokens: Optional[int] = None
     graded_by: str = "openai"
+    ai_detection_score: Optional[float] = None
 
 
 class UploadResponse(BaseModel):

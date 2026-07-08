@@ -35,6 +35,7 @@ export interface GradingResult {
   was_truncated?: boolean;
   truncated_at_tokens?: number;
   graded_by?: string;
+  ai_detection_score?: number | null;
 }
 
 export interface JobStatus {

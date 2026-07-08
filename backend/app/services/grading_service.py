@@ -14,6 +14,7 @@ from ..models import Job
 from ..schemas import GradingResult
 from ..utils.file_cleanup import delete_file
 from ..utils.token_counter import truncate_text
+from .ai_detection_service import check_ai_likelihood
 from .pdf_service import extract_all, render_pages_as_images
 from ..events_data import get_cluster_for_code, get_event_by_code
 from .rubric_service import get_rubric_by_event, get_rubric_by_event_code
@@ -359,8 +360,10 @@ def grade_report(db: Session, job_id: str) -> None:
             None,
         )
 
-        # Run text grading and vision check in parallel — they are independent
-        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        ai_detection_enabled = os.getenv("AI_DETECTION_ENABLED", "false").lower() == "true"
+
+        # Run text grading, vision check, and (optionally) AI-detection in parallel — all independent
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             text_future = executor.submit(
                 call_llm,
                 cluster_name, specific_name, event_code, event_description,
@@ -369,6 +372,9 @@ def grade_report(db: Session, job_id: str) -> None:
             vision_future = executor.submit(
                 call_vision_check, job.file_path, page_count, appearance_section,
             )
+            ai_detection_future = (
+                executor.submit(check_ai_likelihood, raw_text) if ai_detection_enabled else None
+            )
             result = text_future.result()
             vision_exc = None
             try:
@@ -376,6 +382,13 @@ def grade_report(db: Session, job_id: str) -> None:
             except Exception as _ve:
                 vision_exc = _ve
                 vision_result = None
+
+            ai_detection_score = None
+            if ai_detection_future is not None:
+                try:
+                    ai_detection_score = ai_detection_future.result()["score"]
+                except Exception as ai_err:
+                    logger.warning("Job %s: AI-detection check failed (%s)", job_id, ai_err)
 
         # Override event_name in LLM output with the specific event display string
         result["event_name"] = f"{specific_name} ({event_code})" if job.event_code else specific_name
@@ -455,6 +468,7 @@ def grade_report(db: Session, job_id: str) -> None:
         result["was_truncated"] = was_truncated
         result["truncated_at_tokens"] = 25000 if was_truncated else None
         result["graded_by"] = "openai"
+        result["ai_detection_score"] = ai_detection_score
 
         # Validate with Pydantic
         grading_result = GradingResult(**result)

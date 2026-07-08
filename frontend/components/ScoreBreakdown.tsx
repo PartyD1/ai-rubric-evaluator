@@ -201,6 +201,16 @@ export default function ScoreBreakdown({ result }: { result: GradingResult }) {
         </div>
       )}
 
+      {/* AI-detection likelihood (dev feature) */}
+      {result.ai_detection_score != null && (
+        <div className="flex items-center gap-3 bg-[#0073C1]/10 border border-[#0073C1]/40 rounded-md px-5 py-4">
+          <span className="text-[#0073C1] text-lg">◆</span>
+          <p className="text-[#60A5FA] text-sm font-medium">
+            AI-detection likelihood: {(result.ai_detection_score * 100).toFixed(0)}%
+          </p>
+        </div>
+      )}
+
       {/* Overall score hero card */}
       <div className="bg-[#00162A] border border-[#1E293B] rounded-md p-10 text-center">
         <div className="flex flex-col items-center gap-1 mb-6">

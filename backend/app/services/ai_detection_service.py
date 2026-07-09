@@ -13,6 +13,11 @@ SAPLING_API_URL = "https://api.sapling.ai/api/v1/aidetect"
 # cost predictable on very long reports (~20k chars covers a full written entry).
 MAX_CHARS = 20000
 
+# Fragments below this word count (list markers like "1.", headings, stray
+# numerals) carry no linguistic signal and score unreliably — drop them from
+# the per-sentence breakdown. The overall document score is unaffected.
+MIN_SENTENCE_WORDS = 4
+
 
 def check_ai_likelihood(text: str) -> dict:
     """Return Sapling's AI-generated-text likelihood for the given text.
@@ -39,5 +44,6 @@ def check_ai_likelihood(text: str) -> dict:
         "sentence_scores": [
             {"sentence": s["sentence"], "score": s["score"]}
             for s in data.get("sentence_scores") or []
+            if len(s["sentence"].split()) >= MIN_SENTENCE_WORDS
         ],
     }

@@ -25,6 +25,16 @@ export interface PenaltyCheck {
   note: string;
 }
 
+export interface SentenceAIScore {
+  sentence: string;
+  score: number;
+}
+
+export interface AIDetectionResult {
+  score: number;
+  sentence_scores: SentenceAIScore[];
+}
+
 export interface GradingResult {
   event_name: string;
   total_possible: number;
@@ -35,7 +45,7 @@ export interface GradingResult {
   was_truncated?: boolean;
   truncated_at_tokens?: number;
   graded_by?: string;
-  ai_detection_score?: number | null;
+  ai_detection?: AIDetectionResult | null;
 }
 
 export interface JobStatus {

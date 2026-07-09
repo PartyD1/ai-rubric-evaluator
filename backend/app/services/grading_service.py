@@ -383,10 +383,10 @@ def grade_report(db: Session, job_id: str) -> None:
                 vision_exc = _ve
                 vision_result = None
 
-            ai_detection_score = None
+            ai_detection = None
             if ai_detection_future is not None:
                 try:
-                    ai_detection_score = ai_detection_future.result()["score"]
+                    ai_detection = ai_detection_future.result()
                 except Exception as ai_err:
                     logger.warning("Job %s: AI-detection check failed (%s)", job_id, ai_err)
 
@@ -468,7 +468,7 @@ def grade_report(db: Session, job_id: str) -> None:
         result["was_truncated"] = was_truncated
         result["truncated_at_tokens"] = 25000 if was_truncated else None
         result["graded_by"] = "openai"
-        result["ai_detection_score"] = ai_detection_score
+        result["ai_detection"] = ai_detection
 
         # Validate with Pydantic
         grading_result = GradingResult(**result)

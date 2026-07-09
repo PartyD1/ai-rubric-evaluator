@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GradingResult, PenaltyCheck, SectionScore } from "@/types/grading";
+import { AIDetectionResult, GradingResult, PenaltyCheck, SectionScore } from "@/types/grading";
 
 function toRoman(n: number): string {
   const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
@@ -153,6 +153,105 @@ const PENALTY_BADGE: Record<PenaltyCheck["status"], { label: string; bg: string;
   clear: { label: "Clear", bg: "bg-[#10B981]/10", border: "border-[#10B981]/40", text: "text-[#10B981]" },
 };
 
+// For AI-detection, high % is bad — inverse of the grading color scale
+function getAIDetectionStyle(pct: number): { color: string; label: string; bg: string; border: string } {
+  if (pct >= 70) return { color: "#EF4444", label: "Likely AI-Generated", bg: "bg-[#EF4444]/10", border: "border-[#EF4444]/40" };
+  if (pct >= 40) return { color: "#FBBF24", label: "Possibly AI-Generated", bg: "bg-[#FBBF24]/10", border: "border-[#FBBF24]/40" };
+  return { color: "#10B981", label: "Likely Human-Written", bg: "bg-[#10B981]/10", border: "border-[#10B981]/40" };
+}
+
+function AIDetectionCard({ detection }: { detection: AIDetectionResult }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const pct = detection.score * 100;
+  const style = getAIDetectionStyle(pct);
+  const flaggedSentences = detection.sentence_scores.filter((s) => s.score >= 0.5);
+
+  return (
+    <div className="bg-[#00162A] border border-[#1E293B] rounded-md overflow-hidden">
+      {/* Header */}
+      <div className="px-6 pt-5 pb-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <h3 className="text-[#E2E8F0] font-semibold text-sm uppercase tracking-wide">
+            AI Detection
+          </h3>
+          <span className={`shrink-0 text-xs font-semibold px-3 py-1 rounded-sm border ${style.bg} ${style.border}`} style={{ color: style.color }}>
+            {style.label}
+          </span>
+        </div>
+        <span className="text-2xl font-bold tracking-tight" style={{ color: style.color }}>
+          {pct.toFixed(0)}%
+        </span>
+      </div>
+
+      {/* Meter */}
+      <div className="px-6 pb-4">
+        <div className="w-full h-2 bg-[#000B14] rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all duration-700 ease-in-out"
+            style={{ width: `${pct}%`, backgroundColor: style.color }}
+          />
+        </div>
+        <p className="text-[#94A3B8]/60 text-xs mt-3 leading-relaxed">
+          Estimated likelihood this report was written by AI, powered by Sapling. AI detectors
+          can produce false positives — treat this as a signal to review, not a verdict.
+        </p>
+      </div>
+
+      {/* Sentence-level breakdown */}
+      {detection.sentence_scores.length > 0 && (
+        <>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-full px-6 py-3 border-t border-[#1E293B] flex items-center justify-between text-[#0073C1] hover:text-[#60A5FA] text-xs font-medium transition-colors duration-150"
+          >
+            <span>
+              Sentence breakdown
+              {flaggedSentences.length > 0 && (
+                <span className="text-[#94A3B8]/60 font-normal">
+                  {" "}— {flaggedSentences.length} of {detection.sentence_scores.length} sentences flagged
+                </span>
+              )}
+            </span>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              className={`transition-transform duration-300 ease-in-out ${expanded ? "rotate-180" : ""}`}
+            >
+              <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+          {expanded && (
+            <div className="px-6 py-5 border-t border-[#1E293B] space-y-2 max-h-96 overflow-y-auto" style={{ backgroundColor: "#001E35" }}>
+              {detection.sentence_scores.map((s, i) => {
+                const sStyle = getAIDetectionStyle(s.score * 100);
+                return (
+                  <div key={i} className="flex items-start gap-3">
+                    <span
+                      className="shrink-0 font-mono text-xs font-semibold w-10 text-right pt-0.5"
+                      style={{ color: sStyle.color }}
+                    >
+                      {(s.score * 100).toFixed(0)}%
+                    </span>
+                    <p
+                      className="text-slate-300 text-sm leading-relaxed border-l-2 pl-3"
+                      style={{ borderColor: sStyle.color }}
+                    >
+                      {s.sentence}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function PenaltyCard({ penalty }: { penalty: PenaltyCheck }) {
   const badge = PENALTY_BADGE[penalty.status];
   return (
@@ -201,16 +300,6 @@ export default function ScoreBreakdown({ result }: { result: GradingResult }) {
         </div>
       )}
 
-      {/* AI-detection likelihood (dev feature) */}
-      {result.ai_detection_score != null && (
-        <div className="flex items-center gap-3 bg-[#0073C1]/10 border border-[#0073C1]/40 rounded-md px-5 py-4">
-          <span className="text-[#0073C1] text-lg">◆</span>
-          <p className="text-[#60A5FA] text-sm font-medium">
-            AI-detection likelihood: {(result.ai_detection_score * 100).toFixed(0)}%
-          </p>
-        </div>
-      )}
-
       {/* Overall score hero card */}
       <div className="bg-[#00162A] border border-[#1E293B] rounded-md p-10 text-center">
         <div className="flex flex-col items-center gap-1 mb-6">
@@ -236,6 +325,9 @@ export default function ScoreBreakdown({ result }: { result: GradingResult }) {
           />
         </div>
       </div>
+
+      {/* AI-detection panel */}
+      {result.ai_detection != null && <AIDetectionCard detection={result.ai_detection} />}
 
       {/* Overall feedback */}
       {result.overall_feedback && (

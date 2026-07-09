@@ -9,12 +9,17 @@ logger = logging.getLogger(__name__)
 
 SAPLING_API_URL = "https://api.sapling.ai/api/v1/aidetect"
 
+# Sapling accepts large documents, but cap the request to keep latency and
+# cost predictable on very long reports (~20k chars covers a full written entry).
+MAX_CHARS = 20000
+
 
 def check_ai_likelihood(text: str) -> dict:
-    """Return Sapling's AI-generated-text likelihood score for the given text.
+    """Return Sapling's AI-generated-text likelihood for the given text.
 
-    Returns {"score": float 0.0-1.0}. Raises on any request/API failure —
-    callers should treat this as non-fatal and fall back to score=None.
+    Returns {"score": float 0-1, "sentence_scores": [{"sentence": str, "score": float}]}.
+    Raises on any request/API failure — callers should treat this as non-fatal
+    and fall back to score=None.
     """
     api_key = os.getenv("SAPLING_API_KEY")
     if not api_key:
@@ -22,11 +27,17 @@ def check_ai_likelihood(text: str) -> dict:
 
     response = httpx.post(
         SAPLING_API_URL,
-        json={"key": api_key, "text": text},
-        timeout=30.0,
+        json={"key": api_key, "text": text[:MAX_CHARS], "sent_scores": True},
+        timeout=60.0,
     )
     response.raise_for_status()
     data = response.json()
 
     logger.info("Sapling AI-detection score: %.3f", data["score"])
-    return {"score": data["score"]}
+    return {
+        "score": data["score"],
+        "sentence_scores": [
+            {"sentence": s["sentence"], "score": s["score"]}
+            for s in data.get("sentence_scores") or []
+        ],
+    }

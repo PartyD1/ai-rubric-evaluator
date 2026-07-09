@@ -32,6 +32,16 @@ class PenaltyCheck(BaseModel):
     note: str
 
 
+class SentenceAIScore(BaseModel):
+    sentence: str
+    score: float  # 0.0-1.0 likelihood this sentence is AI-generated
+
+
+class AIDetectionResult(BaseModel):
+    score: float  # 0.0-1.0 overall likelihood the document is AI-generated
+    sentence_scores: List[SentenceAIScore] = []
+
+
 class GradingResult(BaseModel):
     event_name: str
     total_possible: int
@@ -42,7 +52,7 @@ class GradingResult(BaseModel):
     was_truncated: bool = False
     truncated_at_tokens: Optional[int] = None
     graded_by: str = "openai"
-    ai_detection_score: Optional[float] = None
+    ai_detection: Optional[AIDetectionResult] = None
 
 
 class UploadResponse(BaseModel):

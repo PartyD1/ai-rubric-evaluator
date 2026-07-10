@@ -2,6 +2,7 @@
 
 import logging
 import os
+import re
 
 import httpx
 
@@ -18,6 +19,20 @@ MAX_CHARS = 20000
 # the per-sentence breakdown. The overall document score is unaffected.
 MIN_SENTENCE_WORDS = 4
 
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _normalize_for_detection(text: str) -> str:
+    """Collapse PDF line-wrap newlines into spaces.
+
+    PyMuPDF's get_text() inserts a newline at every visually wrapped line, not
+    just at paragraph breaks. Left as-is, Sapling's sentence tokenizer splits
+    on those newlines and scores PDF line fragments instead of real sentences.
+    Collapsing all whitespace runs to single spaces lets Sapling's own
+    punctuation-based sentence segmentation do the job correctly.
+    """
+    return _WHITESPACE_RE.sub(" ", text).strip()
+
 
 def check_ai_likelihood(text: str) -> dict:
     """Return Sapling's AI-generated-text likelihood for the given text.
@@ -30,9 +45,11 @@ def check_ai_likelihood(text: str) -> dict:
     if not api_key:
         raise RuntimeError("SAPLING_API_KEY is not set")
 
+    normalized = _normalize_for_detection(text)
+
     response = httpx.post(
         SAPLING_API_URL,
-        json={"key": api_key, "text": text[:MAX_CHARS], "sent_scores": True},
+        json={"key": api_key, "text": normalized[:MAX_CHARS], "sent_scores": True},
         timeout=60.0,
     )
     response.raise_for_status()

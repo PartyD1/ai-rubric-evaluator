@@ -166,6 +166,9 @@ function AIDetectionCard({ detection }: { detection: AIDetectionResult }) {
   const pct = detection.score * 100;
   const style = getAIDetectionStyle(pct);
   const flaggedSentences = detection.sentence_scores.filter((s) => s.score >= 0.5);
+  // Highest-signal sentences first — these are what actually drives the overall score,
+  // which is a holistic document-level read, not an average of the per-sentence scores below.
+  const sortedSentences = [...detection.sentence_scores].sort((a, b) => b.score - a.score);
 
   return (
     <div className="bg-[#00162A] border border-[#1E293B] rounded-md overflow-hidden">
@@ -193,8 +196,10 @@ function AIDetectionCard({ detection }: { detection: AIDetectionResult }) {
           />
         </div>
         <p className="text-[#94A3B8]/60 text-xs mt-3 leading-relaxed">
-          Estimated likelihood this report was written by AI, powered by Sapling. AI detectors
-          can produce false positives — treat this as a signal to review, not a verdict.
+          Estimated likelihood this report was written by AI, powered by Sapling. This is a
+          holistic read of the whole document&apos;s style — it does not average the per-sentence
+          scores below, so the two numbers won&apos;t always line up. AI detectors can produce
+          false positives — treat this as a signal to review, not a verdict.
         </p>
       </div>
 
@@ -206,10 +211,10 @@ function AIDetectionCard({ detection }: { detection: AIDetectionResult }) {
             className="w-full px-6 py-3 border-t border-[#1E293B] flex items-center justify-between text-[#0073C1] hover:text-[#60A5FA] text-xs font-medium transition-colors duration-150"
           >
             <span>
-              Sentence breakdown
+              Sentence breakdown, highest-signal first
               {flaggedSentences.length > 0 && (
                 <span className="text-[#94A3B8]/60 font-normal">
-                  {" "}— {flaggedSentences.length} of {detection.sentence_scores.length} sentences flagged
+                  {" "}— {flaggedSentences.length} of {detection.sentence_scores.length} individually score 50%+
                 </span>
               )}
             </span>
@@ -225,7 +230,7 @@ function AIDetectionCard({ detection }: { detection: AIDetectionResult }) {
           </button>
           {expanded && (
             <div className="px-6 py-5 border-t border-[#1E293B] space-y-2 max-h-96 overflow-y-auto" style={{ backgroundColor: "#001E35" }}>
-              {detection.sentence_scores.map((s, i) => {
+              {sortedSentences.map((s, i) => {
                 const sStyle = getAIDetectionStyle(s.score * 100);
                 return (
                   <div key={i} className="flex items-start gap-3">

@@ -111,11 +111,13 @@ def extract_text(file_path: str) -> str:
         ) from e
 
 
-def extract_all(file_path: str) -> tuple[int, dict, str]:
-    """Open the PDF once and return (page_count, doc_structure, text).
+def extract_all(file_path: str) -> tuple[int, dict, str, list[str]]:
+    """Open the PDF once and return (page_count, doc_structure, text, page_texts).
 
     Combines get_page_count + detect_document_structure + extract_text into
-    a single file open, which avoids redundant I/O on large PDFs.
+    a single file open, which avoids redundant I/O on large PDFs. page_texts
+    is the per-page breakdown, kept around so callers can select a subset of
+    pages (e.g. excluding boilerplate) without re-opening the file.
     """
     doc = fitz.open(file_path)
     page_count = len(doc)
@@ -145,7 +147,28 @@ def extract_all(file_path: str) -> tuple[int, dict, str]:
         raise ValueError("Unable to extract text from PDF. Ensure it's a typed document.")
 
     doc_structure = {"has_title_page": has_title_page, "has_toc": has_toc, "has_soa": has_soa}
-    return page_count, doc_structure, full_text
+    return page_count, doc_structure, full_text, text_parts
+
+
+def extract_body_text(page_texts: list[str]) -> str:
+    """Join page text, excluding the title page and Statement of Assurances page(s).
+
+    Those pages are boilerplate/signature blocks with no original writing —
+    stripping them keeps AI-detection focused on actual report content and
+    avoids spending API quota scoring form text.
+    """
+    body_pages = []
+    for i, text in enumerate(page_texts):
+        stripped = text.strip()
+        text_lower = stripped.lower()
+        is_title_page = i == 0 and len(stripped.split()) < 80
+        is_soa_page = "statement of assurances" in text_lower or "academic integrity" in text_lower
+        if is_title_page or is_soa_page:
+            continue
+        body_pages.append(text)
+
+    body_text = "\n".join(body_pages)
+    return body_text if body_text.strip() else "\n".join(page_texts)
 
 
 def render_pages_as_images(file_path: str, page_indices: list[int]) -> list[bytes]:

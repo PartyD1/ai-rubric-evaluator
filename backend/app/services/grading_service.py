@@ -15,7 +15,7 @@ from ..schemas import GradingResult
 from ..utils.file_cleanup import delete_file
 from ..utils.token_counter import truncate_text
 from .ai_detection_service import check_ai_likelihood
-from .pdf_service import extract_all, render_pages_as_images
+from .pdf_service import extract_all, extract_body_text, render_pages_as_images
 from ..events_data import get_cluster_for_code, get_event_by_code
 from .rubric_service import get_rubric_by_event, get_rubric_by_event_code
 
@@ -316,7 +316,7 @@ def grade_report(db: Session, job_id: str) -> None:
         db.commit()
 
         # Single-pass PDF read: page count + structure detection + text extraction
-        page_count, doc_structure, raw_text = extract_all(job.file_path)
+        page_count, doc_structure, raw_text, page_texts = extract_all(job.file_path)
 
         # Reject non-DECA PDFs before touching the OpenAI API
         _validate_deca_report(raw_text)
@@ -373,7 +373,8 @@ def grade_report(db: Session, job_id: str) -> None:
                 call_vision_check, job.file_path, page_count, appearance_section,
             )
             ai_detection_future = (
-                executor.submit(check_ai_likelihood, raw_text) if ai_detection_enabled else None
+                executor.submit(check_ai_likelihood, extract_body_text(page_texts))
+                if ai_detection_enabled else None
             )
             result = text_future.result()
             vision_exc = None

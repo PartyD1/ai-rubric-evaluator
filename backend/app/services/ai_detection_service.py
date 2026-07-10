@@ -3,12 +3,19 @@
 import logging
 import os
 import re
+import time
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
 SAPLING_API_URL = "https://api.sapling.ai/api/v1/aidetect"
+
+# Sapling's cheaper tiers enforce a short burst rate limit that clears within
+# seconds — retry a couple of times before giving up rather than dropping the
+# score on a transient 429.
+MAX_RETRIES = 2
+RETRY_BACKOFF_SECONDS = [2, 5]
 
 # Sapling accepts large documents, but cap the request to keep latency and
 # cost predictable on very long reports (~20k chars covers a full written entry).
@@ -46,12 +53,17 @@ def check_ai_likelihood(text: str) -> dict:
         raise RuntimeError("SAPLING_API_KEY is not set")
 
     normalized = _normalize_for_detection(text)
+    payload = {"key": api_key, "text": normalized[:MAX_CHARS], "sent_scores": True}
 
-    response = httpx.post(
-        SAPLING_API_URL,
-        json={"key": api_key, "text": normalized[:MAX_CHARS], "sent_scores": True},
-        timeout=60.0,
-    )
+    response = None
+    for attempt in range(MAX_RETRIES + 1):
+        response = httpx.post(SAPLING_API_URL, json=payload, timeout=60.0)
+        if response.status_code != 429 or attempt == MAX_RETRIES:
+            break
+        delay = RETRY_BACKOFF_SECONDS[attempt]
+        logger.warning("Sapling rate-limited (429), retrying in %ds", delay)
+        time.sleep(delay)
+
     response.raise_for_status()
     data = response.json()
 

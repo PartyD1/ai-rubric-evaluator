@@ -1,14 +1,23 @@
 import { ClusterEvents, HistoryItem, JobStatus, UploadResponse } from "@/types/grading";
+import type { components } from "@/types/api.gen";
+
+type AdminStats = components["schemas"]["AdminStats"];
+type AdminAnalytics = components["schemas"]["AdminAnalytics"];
+type AdminUserRow = components["schemas"]["AdminUserRow"];
+type AdminSubmissionRow = components["schemas"]["AdminSubmissionRow"];
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-// Use a generous timeout for event loading in case of cold starts.
+// Use a generous timeout for event loading in case of cold starts. If the
+// caller passes its own signal (e.g. to abort on component unmount), both
+// that signal and the timeout can cancel the request.
 function fetchWithTimeout(input: string, options?: RequestInit, timeoutMs = 90000): Promise<Response> {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  return fetch(input, { ...options, signal: controller.signal }).finally(() =>
-    clearTimeout(id)
-  );
+  const timeoutController = new AbortController();
+  const id = setTimeout(() => timeoutController.abort(), timeoutMs);
+  const signal = options?.signal
+    ? AbortSignal.any([options.signal, timeoutController.signal])
+    : timeoutController.signal;
+  return fetch(input, { ...options, signal }).finally(() => clearTimeout(id));
 }
 
 export async function getEvents(): Promise<ClusterEvents[]> {
@@ -34,11 +43,11 @@ export async function uploadPdf(
   const headers: Record<string, string> = {};
   if (authorization) headers["Authorization"] = authorization;
 
-  const res = await fetch(`${API_URL}/api/upload`, {
+  const res = await fetchWithTimeout(`${API_URL}/api/upload`, {
     method: "POST",
     headers,
     body: formData,
-  });
+  }, 60000);
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ detail: "Upload failed" }));
@@ -48,8 +57,8 @@ export async function uploadPdf(
   return res.json();
 }
 
-export async function getJobStatus(jobId: string): Promise<JobStatus> {
-  const res = await fetch(`${API_URL}/api/status/${jobId}`);
+export async function getJobStatus(jobId: string, signal?: AbortSignal): Promise<JobStatus> {
+  const res = await fetchWithTimeout(`${API_URL}/api/status/${jobId}`, { signal }, 15000);
   if (!res.ok) throw new Error("Failed to fetch job status");
   return res.json();
 }
@@ -62,25 +71,25 @@ export async function getHistory(eventCode: string): Promise<HistoryItem[]> {
   return res.json();
 }
 
-export async function getAdminStats() {
+export async function getAdminStats(): Promise<AdminStats> {
   const res = await fetch("/api/proxy/admin/stats");
   if (!res.ok) throw new Error("Failed to fetch admin stats");
   return res.json();
 }
 
-export async function getAdminUsers() {
+export async function getAdminUsers(): Promise<AdminUserRow[]> {
   const res = await fetch("/api/proxy/admin/users");
   if (!res.ok) throw new Error("Failed to fetch admin users");
   return res.json();
 }
 
-export async function getAdminAnalytics() {
+export async function getAdminAnalytics(): Promise<AdminAnalytics> {
   const res = await fetch("/api/proxy/admin/analytics");
   if (!res.ok) throw new Error("Failed to fetch admin analytics");
   return res.json();
 }
 
-export async function getAdminUserSubmissions(userId: string) {
+export async function getAdminUserSubmissions(userId: string): Promise<AdminSubmissionRow[]> {
   const res = await fetch(`/api/proxy/admin/users/${userId}/submissions`);
   if (!res.ok) throw new Error("Failed to fetch user submissions");
   return res.json();

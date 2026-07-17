@@ -29,6 +29,9 @@ build/
 # Alembic
 alembic/versions/__pycache__/
 
+# Generated OpenAPI schema (regenerate via backend/scripts/export_openapi.py)
+backend/openapi.json
+
 # Misc
 *.log
 *.pid

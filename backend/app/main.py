@@ -12,12 +12,15 @@ from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .auth import get_optional_user
+from pydantic import ValidationError
+
+from .auth import get_optional_user, require_admin
 from .database import SessionLocal, get_db
 from .events_data import CLUSTERS, get_cluster_for_code, get_rubric_name_for_code
 from .models import Job, User
 from .routers import admin, history
 from .schemas import ClusterEvents, EventInfo, JobResponse, RubricCreate, UploadResponse
+from .schemas_rubric import RubricSchema
 from .services import grading_service, pdf_service, rubric_service
 
 logging.basicConfig(level=logging.INFO)
@@ -25,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 
 def _seed_rubrics() -> None:
-    """Seed any rubric JSON files that are not yet in the database."""
+    """Seed rubric JSON files into the database, validating each against
+    RubricSchema first. New events are inserted; existing events are
+    re-seeded only if the file content has changed, so hand-edited rubric
+    files stay in sync without clobbering unrelated DB state on every boot."""
     db = SessionLocal()
     try:
         rubrics_dir = Path(__file__).resolve().parent.parent / "rubrics"
@@ -33,11 +39,23 @@ def _seed_rubrics() -> None:
             return
         for json_file in rubrics_dir.glob("*.json"):
             with open(json_file) as f:
-                data = json.load(f)
-            event_name = data.get("event")
-            if event_name and not rubric_service.get_rubric_by_event(db, event_name):
+                raw = json.load(f)
+
+            try:
+                validated = RubricSchema(**raw)
+            except ValidationError as e:
+                logger.error("Skipping invalid rubric file %s: %s", json_file.name, e)
+                continue
+
+            event_name = validated.event
+            existing = rubric_service.get_rubric_by_event(db, event_name)
+            data = validated.model_dump(exclude_none=True)
+            if existing is None:
                 rubric_service.create_rubric(db, event_name, data)
                 logger.info("Auto-seeded rubric: %s", event_name)
+            elif existing.rubric_data != data:
+                rubric_service.create_rubric(db, event_name, data)
+                logger.info("Re-seeded changed rubric: %s", event_name)
     finally:
         db.close()
 
@@ -243,15 +261,25 @@ def list_events(db: Session = Depends(get_db)):
 
 
 @app.post("/api/rubrics")
-def create_rubric(rubric: RubricCreate, db: Session = Depends(get_db)):
-    """Create or update a rubric."""
-    result = rubric_service.create_rubric(db, rubric.event_name, rubric.rubric_data)
+def create_rubric(
+    rubric: RubricCreate,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Create or update a rubric. Admin-only — this can overwrite grading criteria."""
+    result = rubric_service.create_rubric(
+        db, rubric.event_name, rubric.rubric_data.model_dump(exclude_none=True)
+    )
     return {"id": result.id, "event_name": result.event_name}
 
 
 @app.get("/api/rubrics/{event}")
-def get_rubric(event: str, db: Session = Depends(get_db)):
-    """Get a specific rubric by event name."""
+def get_rubric(
+    event: str,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(require_admin),
+):
+    """Get a specific rubric by event name. Admin-only."""
     rubric = rubric_service.get_rubric_by_event(db, event)
     if not rubric:
         raise HTTPException(status_code=404, detail="Rubric not found")

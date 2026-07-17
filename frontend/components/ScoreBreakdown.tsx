@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useMemo, useState } from "react";
+import { useCopyToClipboard } from "@/lib/useCopyToClipboard";
 import { AIDetectionResult, GradingResult, PenaltyCheck, SectionScore } from "@/types/grading";
 
 function toRoman(n: number): string {
@@ -30,13 +31,11 @@ function getSemanticBg(pct: number): { bg: string; border: string; text: string 
   return { bg: "bg-[#7F1D1D]/20", border: "border-[#7F1D1D]/40", text: "text-red-300" };
 }
 
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+export function CopyButton({ text }: { text: string }) {
+  const [copied, copy] = useCopyToClipboard();
   const handleCopy = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    copy(text);
   };
   return (
     <button
@@ -58,18 +57,17 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
-function SectionCard({
+const SectionCard = memo(function SectionCard({
   section,
   index,
-  forceExpanded,
+  expanded,
+  onToggle,
 }: {
   section: SectionScore;
   index: number;
-  forceExpanded: boolean;
+  expanded: boolean;
+  onToggle: () => void;
 }) {
-  const [localExpanded, setLocalExpanded] = useState(false);
-  const expanded = forceExpanded || localExpanded;
-
   const pct = section.max_points > 0
     ? (section.awarded_points / section.max_points) * 100
     : 0;
@@ -79,7 +77,7 @@ function SectionCard({
   return (
     <div
       className="group bg-[#00162A] border border-[#1E293B] rounded-md cursor-pointer hover:border-[#0073C1]/60 transition-all duration-300 ease-in-out overflow-hidden"
-      onClick={() => setLocalExpanded(!localExpanded)}
+      onClick={onToggle}
     >
       {/* Header row */}
       <div className="flex items-center gap-4 px-6 pt-5 pb-3">
@@ -145,7 +143,7 @@ function SectionCard({
       )}
     </div>
   );
-}
+});
 
 const PENALTY_BADGE: Record<PenaltyCheck["status"], { label: string; bg: string; border: string; text: string }> = {
   flagged: { label: "Action Required", bg: "bg-[#EF4444]/10", border: "border-[#EF4444]/40", text: "text-[#EF4444]" },
@@ -165,10 +163,16 @@ function AIDetectionCard({ detection }: { detection: AIDetectionResult }) {
 
   const pct = detection.score * 100;
   const style = getAIDetectionStyle(pct);
-  const flaggedSentences = detection.sentence_scores.filter((s) => s.score >= 0.5);
+  const flaggedCount = useMemo(
+    () => detection.sentence_scores.filter((s) => s.score >= 0.5).length,
+    [detection.sentence_scores]
+  );
   // Highest-signal sentences first — these are what actually drives the overall score,
   // which is a holistic document-level read, not an average of the per-sentence scores below.
-  const sortedSentences = [...detection.sentence_scores].sort((a, b) => b.score - a.score);
+  const sortedSentences = useMemo(
+    () => [...detection.sentence_scores].sort((a, b) => b.score - a.score),
+    [detection.sentence_scores]
+  );
 
   return (
     <div className="bg-[#00162A] border border-[#1E293B] rounded-md overflow-hidden">
@@ -212,9 +216,9 @@ function AIDetectionCard({ detection }: { detection: AIDetectionResult }) {
           >
             <span>
               Sentence breakdown, highest-signal first
-              {flaggedSentences.length > 0 && (
+              {flaggedCount > 0 && (
                 <span className="text-[#94A3B8]/60 font-normal">
-                  {" "}— {flaggedSentences.length} of {detection.sentence_scores.length} individually score 50%+
+                  {" "}— {flaggedCount} of {detection.sentence_scores.length} individually score 50%+
                 </span>
               )}
             </span>
@@ -274,7 +278,23 @@ function PenaltyCard({ penalty }: { penalty: PenaltyCheck }) {
 }
 
 export default function ScoreBreakdown({ result }: { result: GradingResult }) {
-  const [allExpanded, setAllExpanded] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const allExpanded = expandedSections.size === result.sections.length;
+
+  const toggleAll = () => {
+    setExpandedSections(
+      allExpanded ? new Set() : new Set(result.sections.map((s) => s.name))
+    );
+  };
+
+  const toggleSection = (name: string) => {
+    setExpandedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   const overallPct = result.total_possible > 0
     ? (result.total_awarded / result.total_possible) * 100
@@ -368,14 +388,20 @@ export default function ScoreBreakdown({ result }: { result: GradingResult }) {
             Section Breakdown
           </h2>
           <button
-            onClick={() => setAllExpanded((prev) => !prev)}
+            onClick={toggleAll}
             className="text-[#0073C1] text-xs font-medium hover:text-[#60A5FA] transition-colors duration-150"
           >
             {allExpanded ? "Collapse All" : "Expand All"}
           </button>
         </div>
         {result.sections.map((section, i) => (
-          <SectionCard key={section.name} section={section} index={i} forceExpanded={allExpanded} />
+          <SectionCard
+            key={section.name}
+            section={section}
+            index={i}
+            expanded={expandedSections.has(section.name)}
+            onToggle={() => toggleSection(section.name)}
+          />
         ))}
       </div>
 

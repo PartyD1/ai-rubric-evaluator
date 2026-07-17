@@ -16,19 +16,27 @@ from dotenv import load_dotenv
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
+from pydantic import ValidationError
+
 from app.database import SessionLocal
+from app.schemas_rubric import RubricSchema
 from app.services.rubric_service import create_rubric
 
 
 def seed_from_json(json_path: str) -> None:
-    """Load a rubric from a JSON file and save to database."""
+    """Load a rubric from a JSON file, validate it, and save to database."""
     with open(json_path) as f:
         data = json.load(f)
 
-    event_name = data["event"]
+    try:
+        validated = RubricSchema(**data)
+    except ValidationError as e:
+        print(f"Invalid rubric — not saved:\n{e}")
+        sys.exit(1)
+
     db = SessionLocal()
     try:
-        rubric = create_rubric(db, event_name, data)
+        rubric = create_rubric(db, validated.event, validated.model_dump(exclude_none=True))
         print(f"Rubric saved: {rubric.event_name} (id={rubric.id})")
     finally:
         db.close()
@@ -85,20 +93,21 @@ def interactive_mode() -> None:
         except json.JSONDecodeError as e:
             print(f"Invalid JSON — skipping required_outline: {e}")
 
-    # Validate points sum
-    section_sum = sum(s["max_points"] for s in sections)
-    if section_sum != total_points:
-        print(f"\nWarning: Section points sum to {section_sum}, not {total_points}")
+    try:
+        validated = RubricSchema(**rubric_data)
+    except ValidationError as e:
+        print(f"\nRubric is invalid — cannot save:\n{e}")
+        return
 
     preview = input("\nPreview rubric JSON? [y/n]: ").strip().lower()
     if preview == "y":
-        print(json.dumps(rubric_data, indent=2))
+        print(json.dumps(validated.model_dump(exclude_none=True), indent=2))
 
     save = input("\nSave to database? [y/n]: ").strip().lower()
     if save == "y":
         db = SessionLocal()
         try:
-            rubric = create_rubric(db, event_name, rubric_data)
+            rubric = create_rubric(db, event_name, validated.model_dump(exclude_none=True))
             print(f"Rubric saved: {rubric.event_name} (id={rubric.id})")
         finally:
             db.close()

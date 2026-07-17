@@ -12,8 +12,9 @@ from sqlalchemy.orm import Session
 
 from ..models import Job
 from ..schemas import GradingResult
+from ..schemas_rubric import APPEARANCE_SECTION_NAME
 from ..utils.file_cleanup import delete_file
-from ..utils.token_counter import truncate_text
+from ..utils.token_counter import TRUNCATION_TARGET, truncate_text
 from .ai_detection_service import check_ai_likelihood
 from .pdf_service import extract_all, extract_body_text, render_pages_as_images
 from ..events_data import get_cluster_for_code, get_event_by_code
@@ -356,7 +357,7 @@ def grade_report(db: Session, job_id: str) -> None:
         # Find the appearance section in the rubric for the vision check
         appearance_section = next(
             (s for s in rubric.rubric_data.get("sections", [])
-             if s.get("name", "").lower() == "appearance and word usage"),
+             if s.get("name", "").lower() == APPEARANCE_SECTION_NAME),
             None,
         )
 
@@ -415,7 +416,7 @@ def grade_report(db: Session, job_id: str) -> None:
             # Override appearance section score with visually-informed result
             if appearance_section:
                 for section in result.get("sections", []):
-                    if section.get("name", "").lower() == "appearance and word usage":
+                    if section.get("name", "").lower() == APPEARANCE_SECTION_NAME:
                         section["awarded_points"] = min(
                             vision_result["appearance_score"],
                             section["max_points"],
@@ -467,7 +468,7 @@ def grade_report(db: Session, job_id: str) -> None:
         result["total_awarded"] = sum(s["awarded_points"] for s in result.get("sections", []))
 
         result["was_truncated"] = was_truncated
-        result["truncated_at_tokens"] = 25000 if was_truncated else None
+        result["truncated_at_tokens"] = TRUNCATION_TARGET if was_truncated else None
         result["graded_by"] = "openai"
         result["ai_detection"] = ai_detection
 
@@ -515,11 +516,15 @@ def call_llm(
             "Students must follow this official DECA written report structure. "
             "Check whether each required element is present when grading the corresponding rubric section. "
             "Penalize missing or incomplete required elements appropriately.\n\n"
-            + json.dumps(required_outline, indent=2)
+            + json.dumps(required_outline, separators=(",", ":"))
             + "\n"
         )
     else:
         required_outline_section = ""
+
+    # required_outline is injected separately above (event-level overrides cluster-level),
+    # so drop it from the rubric dump to avoid sending it to the model twice.
+    rubric_for_prompt = {k: v for k, v in rubric_data.items() if k != "required_outline"}
 
     prompt = SYSTEM_PROMPT_TEMPLATE.format(
         cluster_name=cluster_name,
@@ -527,7 +532,7 @@ def call_llm(
         event_code=event_code,
         event_description=event_description,
         required_outline_section=required_outline_section,
-        rubric_json=json.dumps(rubric_data, indent=2),
+        rubric_json=json.dumps(rubric_for_prompt, separators=(",", ":")),
         extracted_text=extracted_text,
     )
 
@@ -575,7 +580,7 @@ def call_vision_check(
     if appearance_section:
         prompt = VISION_PROMPT_WITH_APPEARANCE.format(
             max_points=appearance_section["max_points"],
-            scoring_guide=json.dumps(appearance_section.get("scoring_guide", {}), indent=2),
+            scoring_guide=json.dumps(appearance_section.get("scoring_guide", {}), separators=(",", ":")),
         )
     else:
         prompt = VISION_PROMPT_SOA_ONLY

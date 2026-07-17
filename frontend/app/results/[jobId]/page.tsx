@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, use, useCallback } from "react";
+import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { getJobStatus } from "@/lib/api";
+import { useCopyToClipboard } from "@/lib/useCopyToClipboard";
 import { GradingResult } from "@/types/grading";
 import AuditProgress from "@/components/AuditProgress";
 import AuthButton from "@/components/AuthButton";
@@ -24,34 +25,34 @@ export default function ResultsPage({
   const [eventCode, setEventCode] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
-
-  const copyLink = useCallback(() => {
-    navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }, []);
+  const [copied, copyLink] = useCopyToClipboard();
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    const abortController = new AbortController();
+    const timers: {
+      interval?: ReturnType<typeof setInterval>;
+      completingTimeout?: ReturnType<typeof setTimeout>;
+    } = {};
     const startTime = Date.now();
 
     const poll = async () => {
       try {
-        const data = await getJobStatus(jobId);
+        const data = await getJobStatus(jobId, abortController.signal);
+        if (abortController.signal.aborted) return;
         setStatus(data.status);
 
         if (data.status === "complete" && data.result) {
-          clearInterval(interval);
+          clearInterval(timers.interval);
           setCompleting(true);
           setEventCode(data.event_code ?? null);
-          setTimeout(() => setResult(data.result), 900);
+          const resolvedResult = data.result;
+          timers.completingTimeout = setTimeout(() => setResult(resolvedResult), 900);
           return;
         }
 
         if (data.status === "failed") {
           setError(data.error || "Grading failed. Please try again.");
-          clearInterval(interval);
+          clearInterval(timers.interval);
           return;
         }
 
@@ -59,17 +60,22 @@ export default function ResultsPage({
           setError(
             "The backend is taking longer than expected — it may still be starting up. Please wait a moment and try again."
           );
-          clearInterval(interval);
+          clearInterval(timers.interval);
         }
       } catch {
+        if (abortController.signal.aborted) return;
         setError("Failed to check status. Is the backend running?");
-        clearInterval(interval);
+        clearInterval(timers.interval);
       }
     };
 
     poll();
-    interval = setInterval(poll, POLL_INTERVAL);
-    return () => clearInterval(interval);
+    timers.interval = setInterval(poll, POLL_INTERVAL);
+    return () => {
+      abortController.abort();
+      clearInterval(timers.interval);
+      clearTimeout(timers.completingTimeout);
+    };
   }, [jobId]);
 
   const statusMessage =
@@ -89,7 +95,7 @@ export default function ResultsPage({
           {result && (
             <div className="flex items-center gap-4">
               <button
-                onClick={copyLink}
+                onClick={() => copyLink(window.location.href)}
                 className="text-[#94A3B8] hover:text-[#E2E8F0] text-sm transition-colors duration-200"
               >
                 {copied ? "Copied!" : "Copy link"}

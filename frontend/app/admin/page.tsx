@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import ScorelyLogo from "@/components/ScorelyLogo";
 import AuthButton from "@/components/AuthButton";
 import { getAdminStats, getAdminUsers, getAdminUserSubmissions, getAdminAnalytics } from "@/lib/api";
+import type { components } from "@/types/api.gen";
 import {
   LineChart,
   Line,
@@ -22,46 +23,14 @@ import {
 const ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+// Re-exports of backend-generated types (see types/api.gen.ts) so a backend
+// schema change is caught here at compile time instead of silently drifting.
 
-interface Stats {
-  total_users: number;
-  total_submissions: number;
-  submissions_today: number;
-  submissions_this_week: number;
-  unique_ips: number;
-  anonymous_submissions: number;
-  authenticated_submissions: number;
-  completion_rate: number;
-  top_events: { event_code: string; count: number }[];
-}
-
-interface DailyPoint { date: string; value: number }
-
-interface Analytics {
-  signups_30d: DailyPoint[];
-  submissions_30d: DailyPoint[];
-  anon_submissions_30d: DailyPoint[];
-  auth_submissions_30d: DailyPoint[];
-}
-
-interface AdminUser {
-  id: string;
-  email: string;
-  name: string;
-  picture?: string;
-  created_at: string;
-  submission_count: number;
-}
-
-interface Submission {
-  job_id: string;
-  event_name: string;
-  event_code?: string;
-  total_awarded?: number;
-  total_possible?: number;
-  status: string;
-  created_at: string;
-}
+type Stats = components["schemas"]["AdminStats"];
+type DailyPoint = components["schemas"]["DailyDataPoint"];
+type Analytics = components["schemas"]["AdminAnalytics"];
+type AdminUser = components["schemas"]["AdminUserRow"];
+type Submission = components["schemas"]["AdminSubmissionRow"];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -110,7 +79,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-function ScoreBar({ awarded, possible }: { awarded?: number; possible?: number }) {
+function ScoreBar({ awarded, possible }: { awarded?: number | null; possible?: number | null }) {
   if (awarded == null || possible == null || possible === 0)
     return <span className="text-[#64748B] text-xs">—</span>;
   const pct = Math.round((awarded / possible) * 100);

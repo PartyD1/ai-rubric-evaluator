@@ -1,58 +1,16 @@
-export interface EventInfo {
-  code: string;
-  name: string;
-  description: string;
-}
+// Re-exports of backend-generated types (see types/api.gen.ts, generated via
+// `npm run gen:types` from the FastAPI OpenAPI schema). Import paths across the
+// app stay stable even though the underlying types now come from codegen —
+// a backend schema change flows through here automatically on regeneration.
+import type { components } from "./api.gen";
 
-export interface ClusterEvents {
-  cluster_name: string;
-  display_label: string;
-  events: EventInfo[];
-}
-
-export interface SectionScore {
-  name: string;
-  max_points: number;
-  awarded_points: number;
-  feedback: string;
-  improvement?: string;
-}
-
-export interface PenaltyCheck {
-  description: string;
-  penalty_points: number;
-  status: "flagged" | "clear" | "manual_check";
-  note: string;
-}
-
-export interface GradingResult {
-  event_name: string;
-  total_possible: number;
-  total_awarded: number;
-  sections: SectionScore[];
-  overall_feedback: string;
-  penalties?: PenaltyCheck[];
-  was_truncated?: boolean;
-  truncated_at_tokens?: number;
-  graded_by?: string;
-}
-
-export interface JobStatus {
-  status: "pending" | "processing" | "complete" | "failed";
-  result: GradingResult | null;
-  error: string | null;
-  event_code?: string | null;
-}
-
-export interface UploadResponse {
-  job_id: string;
-}
-
-export interface HistoryItem {
-  job_id: string;
-  event_name: string;
-  event_code: string | null;
-  total_awarded: number;
-  total_possible: number;
-  created_at: string;
-}
+export type EventInfo = components["schemas"]["EventInfo"];
+export type ClusterEvents = components["schemas"]["ClusterEvents"];
+export type SectionScore = components["schemas"]["SectionScore"];
+export type PenaltyCheck = components["schemas"]["PenaltyCheck"];
+export type SentenceAIScore = components["schemas"]["SentenceAIScore"];
+export type AIDetectionResult = components["schemas"]["AIDetectionResult"];
+export type GradingResult = components["schemas"]["GradingResult"];
+export type JobStatus = components["schemas"]["JobResponse"];
+export type UploadResponse = components["schemas"]["UploadResponse"];
+export type HistoryItem = components["schemas"]["HistoryItem"];

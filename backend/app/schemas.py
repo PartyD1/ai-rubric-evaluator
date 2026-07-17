@@ -1,8 +1,10 @@
 """Pydantic request/response schemas."""
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
+
+from .schemas_rubric import RubricSchema
 
 
 class EventInfo(BaseModel):
@@ -28,8 +30,18 @@ class SectionScore(BaseModel):
 class PenaltyCheck(BaseModel):
     description: str
     penalty_points: int
-    status: str  # "flagged" | "clear" | "manual_check"
+    status: Literal["flagged", "clear", "manual_check"]
     note: str
+
+
+class SentenceAIScore(BaseModel):
+    sentence: str
+    score: float  # 0.0-1.0 likelihood this sentence is AI-generated
+
+
+class AIDetectionResult(BaseModel):
+    score: float  # 0.0-1.0 overall likelihood the document is AI-generated
+    sentence_scores: List[SentenceAIScore] = []
 
 
 class GradingResult(BaseModel):
@@ -42,6 +54,7 @@ class GradingResult(BaseModel):
     was_truncated: bool = False
     truncated_at_tokens: Optional[int] = None
     graded_by: str = "openai"
+    ai_detection: Optional[AIDetectionResult] = None
 
 
 class UploadResponse(BaseModel):
@@ -49,7 +62,7 @@ class UploadResponse(BaseModel):
 
 
 class JobResponse(BaseModel):
-    status: str
+    status: Literal["pending", "processing", "complete", "failed"]
     result: Optional[GradingResult] = None
     error: Optional[str] = None
     event_code: Optional[str] = None
@@ -57,7 +70,7 @@ class JobResponse(BaseModel):
 
 class RubricCreate(BaseModel):
     event_name: str
-    rubric_data: dict
+    rubric_data: RubricSchema
 
 
 class UserPublic(BaseModel):
@@ -95,6 +108,11 @@ class AdminSubmissionRow(BaseModel):
     created_at: str
 
 
+class TopEvent(BaseModel):
+    event_code: str
+    count: int
+
+
 class AdminStats(BaseModel):
     total_users: int
     total_submissions: int
@@ -104,7 +122,7 @@ class AdminStats(BaseModel):
     anonymous_submissions: int
     authenticated_submissions: int
     completion_rate: float  # 0-100
-    top_events: List[dict]  # [{"event_code": str, "count": int}]
+    top_events: List[TopEvent]
 
 
 class DailyDataPoint(BaseModel):

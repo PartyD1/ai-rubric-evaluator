@@ -12,7 +12,7 @@ const STEPS = [
 
 const STEP_DURATION = 6000;
 
-export default function AuditProgress({ message, complete }: { message?: string; complete?: boolean }) {
+export default function AuditProgress({ complete }: { complete?: boolean }) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
@@ -41,7 +41,7 @@ export default function AuditProgress({ message, complete }: { message?: string;
         key={complete ? "complete" : step}
         className="text-[#94A3B8] text-lg text-center animate-pulse"
       >
-        {complete ? "Done! Loading your results..." : (message ?? label)}
+        {complete ? "Done! Loading your results..." : label}
       </p>
     </div>
   );
